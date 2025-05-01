@@ -1,0 +1,30 @@
+[
+    {
+        "Identificador": 1,
+        "titulo": "Terapia Infanto-Juvenil",
+        "descripcion": "Terapia Infanto-Juvenil",
+        "precio": 50,
+        "categorias_nombre": 13
+    },
+    {
+        "Identificador": 2,
+        "titulo": "Orientación educativa",
+        "descripcion": "Orientación educativa",
+        "precio": 120,
+        "categorias_nombre": 13
+    },
+    {
+        "Identificador": 3,
+        "titulo": "Sobre mi",
+        "descripcion": "Sobre mi",
+        "precio": 0,
+        "categorias_nombre": 11
+    },
+    {
+        "Identificador": 4,
+        "titulo": "Aplicaciones",
+        "descripcion": "Aplicaciones",
+        "precio": 0,
+        "categorias_nombre": 11
+    }
+]

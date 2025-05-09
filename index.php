@@ -2,9 +2,11 @@
 
 	include "agusmadev-haunter.php";
 	
-	haunter::deMySQL("localhost","evoluciona","evoluciona","evoluciona","productos")->aCSV("salida.csv");
-	haunter::deMySQL("localhost","evoluciona","evoluciona","evoluciona","productos")->aXML("salida.xml");
-	haunter::deMySQL("localhost","evoluciona","evoluciona","evoluciona","productos")->aJSON("salida.json");
-	haunter::deMySQL("localhost","evoluciona","evoluciona","evoluciona","productos")->aSQLite("salida.sqlite3");
+	// Modifica los campos para añadir tu base de datos a convertir
+	
+	haunter::deMySQL("localhost","usuario","contraseña","basedatos","tabla")->aCSV("salida.csv");
+	haunter::deMySQL("localhost","usuario","contraseña","basedatos","tabla")->aXML("salida.xml");
+	haunter::deMySQL("localhost","usuario","contraseña","basedatos","tabla")->aJSON("salida.json");
+	haunter::deMySQL("localhost","usuario","contraseña","basedatos","tabla")->aSQLite("salida.sqlite3");
 
 ?>

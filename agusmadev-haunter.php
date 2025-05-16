@@ -18,8 +18,8 @@ class haunter {
         return new MySQLConverter($servidor, $usuario, $contrasena, $basededatos, $tabla);
     }
 
-    public static function deSQLite($basededatos) {
-        return new SQLiteConverter($basededatos);
+    public static function deSQLite($basededatos, $tabla) {
+        return new SQLiteConverter($basededatos, $tabla);
     }
 }
 
@@ -112,15 +112,17 @@ class JSONConverter extends Conversor {
 
 class CSVConverter extends Conversor {
     private $separador;
+    private $archivo;
 
     public function __construct($entrada, $separador = ",") {
+        $this->archivo = $entrada;
         $this->separador = $separador;
         parent::__construct($this->parseCSV());
     }
 
     private function parseCSV() {
         $data = [];
-        if (($handle = fopen($this->data, "r")) !== FALSE) {
+        if (($handle = fopen($this->archivo, "r")) !== FALSE) {
             $header = fgetcsv($handle, 1000, $this->separador);
             while (($row = fgetcsv($handle, 1000, $this->separador)) !== FALSE) {
                 $data[] = array_combine($header, $row);
@@ -165,19 +167,22 @@ class CSVConverter extends Conversor {
 }
 
 class XMLConverter extends Conversor {
+    private $archivo;
+
     public function __construct($entrada) {
+        $this->archivo = $entrada;
         parent::__construct($this->parseXML());
     }
 
     private function parseXML() {
-        $xmlContent = file_get_contents($this->data);
+        $xmlContent = file_get_contents($this->archivo);
         $xml = simplexml_load_string($xmlContent, "SimpleXMLElement", LIBXML_NOCDATA);
         $json = json_encode($xml);
         return json_decode($json, true);
     }
 
-    public function aMySQL($servidor, $usuario, $contrasena, $basededatos) {
-        $nombreTabla = pathinfo($this->data, PATHINFO_FILENAME);
+    public function aMySQL($servidor, $usuario, $contrasena, $basededatos, $tabla = null) {
+        $nombreTabla = $tabla ?? pathinfo($this->archivo, PATHINFO_FILENAME);
         $pdo = $this->getPDOConnection("mysql:host=$servidor;dbname=$basededatos;charset=utf8mb4", $usuario, $contrasena);
         $columnas = array_keys($this->data[0]);
 
@@ -185,8 +190,8 @@ class XMLConverter extends Conversor {
         $this->insertarDatos($pdo, $nombreTabla, $columnas, $this->data);
     }
 
-    public function aSQLite($archivoBD) {
-        $nombreTabla = pathinfo($this->data, PATHINFO_FILENAME);
+    public function aSQLite($archivoBD, $tabla = null) {
+        $nombreTabla = $tabla ?? pathinfo($this->archivo, PATHINFO_FILENAME);
         $pdo = new PDO("sqlite:" . $archivoBD);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $columnas = array_keys($this->data[0]);
@@ -229,66 +234,15 @@ class MySQLConverter extends Conversor {
 
     private function fetchData() {
         $pdo = $this->getPDOConnection("mysql:host=$this->servidor;dbname=$this->basededatos;charset=utf8mb4", $this->usuario, $this->contrasena);
-        $sql = "SELECT * FROM $this->tabla";
+        $sql = "SELECT * FROM `$this->tabla`";
         $stmt = $pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function aSQLite($archivoBD) {
+    public function aSQLite($archivoBD, $tabla = null) {
+        $tabla = $tabla ?? $this->tabla;
         $pdo = new PDO("sqlite:" . $archivoBD);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $columnas = array_keys($this->data[0]);
-
-        $this->crearTabla($pdo, $this->tabla, $columnas);
-        $this->insertarDatos($pdo, $this->tabla, $columnas, $this->data);
-    }
-
-    public function aCSV($salida, $separador = ",") {
-        $f = fopen($salida, "w");
-        $columnas = array_keys($this->data[0]);
-        fputcsv($f, $columnas, $separador);
-
-        foreach ($this->data as $fila) {
-            fputcsv($f, $fila, $separador);
-        }
-        fclose($f);
-    }
-
-    public function aXML($salida) {
-        $xml = new SimpleXMLElement("<root/>");
-        $this->arrayToXML($this->data, $xml);
-
-        $dom = new DOMDocument("1.0");
-        $dom->preserveWhiteSpace = false;
-        $dom->formatOutput = true;
-        $dom->loadXML($xml->asXML());
-
-        file_put_contents($salida, $dom->saveXML());
-    }
-
-    public function aJSON($salida) {
-        file_put_contents($salida, json_encode($this->data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-    }
-}
-
-class SQLiteConverter extends Conversor {
-    private $basededatos;
-
-    public function __construct($basededatos) {
-        $this->basededatos = $basededatos;
-        parent::__construct($this->fetchData());
-    }
-
-    private function fetchData() {
-        $pdo = new PDO("sqlite:" . $this->basededatos);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT * FROM $this->tabla";
-        $stmt = $pdo->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    public function aMySQL($servidor, $usuario, $contrasena, $basededatos, $tabla) {
-        $pdo = $this->getPDOConnection("mysql:host=$servidor;dbname=$basededatos;charset=utf8mb4", $usuario, $contrasena);
         $columnas = array_keys($this->data[0]);
 
         $this->crearTabla($pdo, $tabla, $columnas);
@@ -323,4 +277,56 @@ class SQLiteConverter extends Conversor {
     }
 }
 
-?>
+class SQLiteConverter extends Conversor {
+    private $basededatos;
+    private $tabla;
+
+    public function __construct($basededatos, $tabla) {
+        $this->basededatos = $basededatos;
+        $this->tabla = $tabla;
+        parent::__construct($this->fetchData());
+    }
+
+    private function fetchData() {
+        $pdo = new PDO("sqlite:" . $this->basededatos);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $stmt = $pdo->query("SELECT * FROM `$this->tabla`");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function aMySQL($servidor, $usuario, $contrasena, $basededatos, $tabla = null) {
+        $tabla = $tabla ?? $this->tabla;
+        $pdo = $this->getPDOConnection("mysql:host=$servidor;dbname=$basededatos;charset=utf8mb4", $usuario, $contrasena);
+        $columnas = array_keys($this->data[0]);
+
+        $this->crearTabla($pdo, $tabla, $columnas);
+        $this->insertarDatos($pdo, $tabla, $columnas, $this->data);
+    }
+
+    public function aCSV($salida, $separador = ",") {
+        $f = fopen($salida, "w");
+        $columnas = array_keys($this->data[0]);
+        fputcsv($f, $columnas, $separador);
+
+        foreach ($this->data as $fila) {
+            fputcsv($f, $fila, $separador);
+        }
+        fclose($f);
+    }
+
+    public function aXML($salida) {
+        $xml = new SimpleXMLElement("<root/>");
+        $this->arrayToXML($this->data, $xml);
+
+        $dom = new DOMDocument("1.0");
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = true;
+        $dom->loadXML($xml->asXML());
+
+        file_put_contents($salida, $dom->saveXML());
+    }
+
+    public function aJSON($salida) {
+        file_put_contents($salida, json_encode($this->data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+}

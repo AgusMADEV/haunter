@@ -3,3 +3,7 @@ salida.json
 salida.sqlite3
 salida.xml
 salida.sqlite3
+*.csv
+*.json
+*.sqlite3
+*.xml
